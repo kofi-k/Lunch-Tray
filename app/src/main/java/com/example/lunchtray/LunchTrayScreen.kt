@@ -15,12 +15,16 @@
  */
 package com.example.lunchtray
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.Scaffold
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -29,31 +33,34 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.lunchtray.datasource.DataSource
 import com.example.lunchtray.model.OrderUiState
-import com.example.lunchtray.model.TrayScreens
 import com.example.lunchtray.ui.*
 
-// TODO: Screen enum
 
-// TODO: AppBar
+enum class TrayScreens {
+    Start, EntreeMenu, SideDishMenu, AccompanimentMenu,
+    Checkout
+}
+
 
 @Composable
 fun LunchTrayApp(modifier: Modifier = Modifier) {
-    // TODO: Create Controller and initialization
 
-    // Create ViewModel
     val viewModel: OrderViewModel = viewModel()
     val navController: NavHostController = rememberNavController()
 
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentScreen = TrayScreens.valueOf(
-        backStackEntry?.destination?.route ?: TrayScreens.Start.name
-    )
+    val title = when (TrayScreens.valueOf(backStackEntry?.destination?.route ?: TrayScreens.Start.name)) {
+        TrayScreens.EntreeMenu -> R.string.choose_entree
+        TrayScreens.SideDishMenu -> R.string.choose_accompaniment
+        TrayScreens.Checkout -> R.string.order_checkout
+        else -> R.string.app_name
+    }
 
-    Scaffold(
-        topBar = {
-            // TODO: AppBar
-        }
-    ) { innerPadding ->
+    Scaffold(topBar = {
+        Appbar(title = title,
+            canNavigateBack = navController.previousBackStackEntry != null,
+            navigateUp = { navController.navigateUp() })
+    }) { innerPadding ->
         val uiState by viewModel.uiState.collectAsState()
         NavHost(
             navController = navController,
@@ -61,77 +68,51 @@ fun LunchTrayApp(modifier: Modifier = Modifier) {
             modifier = modifier.padding(innerPadding),
         ) {
             composable(route = TrayScreens.Start.name) {
-                StartOrderScreen(
-                    modifier = Modifier,
-                    onStartOrderButtonClicked = {
-                        navController.navigate(TrayScreens.EntreeMenu.name)
-                    }
-                )
+                StartOrderScreen(modifier = Modifier, onStartOrderButtonClicked = {
+                    navController.navigate(TrayScreens.EntreeMenu.name)
+                })
             }
             composable(route = TrayScreens.EntreeMenu.name) {
-                EntreeMenuScreen(
-                    options = DataSource.entreeMenuItems,
-                    onCancelButtonClicked = {
-                        cancelOrderAndNavigateToStart(
-                            viewModel = viewModel,
-                            navController = navController
-                        )
-                    },
-                    onSelectionChanged = {
-                        viewModel.updateEntree(it)
-                    },
-                    onNextButtonClicked = {
-                        navController.navigate(TrayScreens.SideDishMenu.name)
-                    }
-                )
+                EntreeMenuScreen(options = DataSource.entreeMenuItems, onCancelButtonClicked = {
+                    cancelOrderAndNavigateToStart(viewModel = viewModel,
+                        navController = navController)
+                }, onSelectionChanged = {
+                    viewModel.updateEntree(it)
+                }, onNextButtonClicked = {
+                    navController.navigate(TrayScreens.SideDishMenu.name)
+                })
             }
             composable(route = TrayScreens.SideDishMenu.name) {
-                SideDishMenuScreen(
-                    options = DataSource.sideDishMenuItems,
-                    onNextButtonClicked = {
-                        navController.navigate(TrayScreens.AccompanimentMenu.name)
-                    },
-                    onSelectionChanged = {
-                        viewModel.updateSideDish(it)
-                    },
-                    onCancelButtonClicked = {
-                        cancelOrderAndNavigateToPreviousScreen(
-                            navController = navController,
-                            destination = TrayScreens.EntreeMenu
-                        )
-                    }
-                )
+                SideDishMenuScreen(options = DataSource.sideDishMenuItems, onNextButtonClicked = {
+                    navController.navigate(TrayScreens.AccompanimentMenu.name)
+                }, onSelectionChanged = {
+                    viewModel.updateSideDish(it)
+                }, onCancelButtonClicked = {
+                    cancelOrderAndNavigateToPreviousScreen(navController = navController,
+                        destination = TrayScreens.EntreeMenu)
+                })
             }
             composable(route = TrayScreens.AccompanimentMenu.name) {
-                AccompanimentMenuScreen(
-                    options = DataSource.accompanimentMenuItems,
+                AccompanimentMenuScreen(options = DataSource.accompanimentMenuItems,
                     onCancelButtonClicked = {
-                        cancelOrderAndNavigateToPreviousScreen(
-                            navController = navController,
-                            destination = TrayScreens.SideDishMenu
-                        )
+                        cancelOrderAndNavigateToPreviousScreen(navController = navController,
+                            destination = TrayScreens.SideDishMenu)
                     },
                     onSelectionChanged = {
                         viewModel.updateAccompaniment(it)
                     },
                     onNextButtonClicked = {
                         navController.navigate(TrayScreens.Checkout.name)
-                    }
-                )
+                    })
             }
             composable(route = TrayScreens.Checkout.name) {
-                CheckoutScreen(
-                    orderUiState = OrderUiState(),
+                CheckoutScreen(orderUiState = OrderUiState(),
                     onNextButtonClicked = {
-                        navController.navigate(TrayScreens.Start.name)
-                    },
-                    onCancelButtonClicked = {
-                        cancelOrderAndNavigateToPreviousScreen(
-                            navController = navController,
-                            destination = TrayScreens.AccompanimentMenu
-                        )
-                    }
-                )
+                        navController.popBackStack(TrayScreens.Start.name, inclusive = false)
+                }, onCancelButtonClicked = {
+                    cancelOrderAndNavigateToPreviousScreen(navController = navController,
+                        destination = TrayScreens.AccompanimentMenu)
+                })
             }
         }
     }
@@ -148,6 +129,23 @@ private fun cancelOrderAndNavigateToStart(
 private fun cancelOrderAndNavigateToPreviousScreen(
     navController: NavHostController,
     destination: TrayScreens,
+) = navController.popBackStack(destination.name, inclusive = false)
+
+@Composable
+fun Appbar(
+    @StringRes title: Int,
+    canNavigateBack: Boolean,
+    navigateUp: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    navController.popBackStack(destination.name, inclusive = false)
+    TopAppBar(title = {
+        Text(text = stringResource(id = title))
+    }, modifier = modifier, navigationIcon = {
+        if (canNavigateBack) {
+            IconButton(onClick = navigateUp) {
+                Icon(imageVector = Icons.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.back_button))
+            }
+        }
+    })
 }
