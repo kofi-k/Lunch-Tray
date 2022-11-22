@@ -106,8 +106,9 @@ fun LunchTrayApp(modifier: Modifier = Modifier) {
                     })
             }
             composable(route = TrayScreens.Checkout.name) {
-                CheckoutScreen(orderUiState = OrderUiState(), onNextButtonClicked = {
-                    navController.navigate(TrayScreens.Start.name)
+                CheckoutScreen(orderUiState = OrderUiState(),
+                    onNextButtonClicked = {
+                        navController.popBackStack(TrayScreens.Start.name, inclusive = false)
                 }, onCancelButtonClicked = {
                     cancelOrderAndNavigateToPreviousScreen(navController = navController,
                         destination = TrayScreens.AccompanimentMenu)
